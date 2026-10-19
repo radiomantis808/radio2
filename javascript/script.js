@@ -77,6 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadGlobalSchedule();
         loadPastShows();
         loadLatestShows();
+        loadSpotlight();
         loadResidentsGrid();
         loadResidentPage();
     }
@@ -698,6 +699,96 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         archive.slice(0, 4).forEach((show) => container.appendChild(buildShowCard(show)));
+    }
+
+    // ---- home: spotlight, one random show from the archive ----
+
+    let spotlightKey = null;   // so "another one" never repeats the current pick
+
+    async function loadSpotlight() {
+        const box = document.getElementById('spotlight');
+        if (!box) return;
+        const shuffle = document.getElementById('spotlight-shuffle');
+        try {
+            await Promise.all([loadArchive(), loadResidents()]);
+        } catch (error) {
+            console.error("Couldn't fetch shows for the spotlight:", error);
+        }
+        if (document.getElementById('spotlight') !== box) return;
+        if (!archive.length) {
+            showMessage(box, 'Listen back to past shows on our Mixcloud page.');
+            if (shuffle) shuffle.hidden = true;
+            return;
+        }
+        renderSpotlight(box);
+        if (shuffle) {
+            shuffle.hidden = archive.length < 2;
+            shuffle.addEventListener('click', () => renderSpotlight(box));
+        }
+    }
+
+    function renderSpotlight(box) {
+        // Prefer residents' shows; fall back to anything
+        const pool = archive.filter((s) => hostsOf(s.name).length && s.key !== spotlightKey);
+        const from = pool.length ? pool : archive.filter((s) => s.key !== spotlightKey);
+        const show = from[Math.floor(Math.random() * from.length)] || archive[0];
+        spotlightKey = show.key;
+
+        const { title, date } = splitTitle(show.name);
+        const hosts = hostsOf(show.name);
+        box.textContent = '';
+
+        const play = document.createElement('button');
+        play.type = 'button';
+        play.className = 'show-play spotlight-art';
+        play.setAttribute('aria-label', `Play ${show.name}`);
+        const img = document.createElement('img');
+        img.src = show.pictures ? (show.pictures.extra_large || show.pictures.large || '') : '';
+        img.alt = '';
+        play.appendChild(img);
+        play.addEventListener('click', () => playArchived(show));
+
+        const text = document.createElement('div');
+        text.className = 'spotlight-text';
+        const h = document.createElement('p');
+        h.className = 'spotlight-title';
+        h.textContent = hosts.length ? title : (show.name || '').split(' - ')[0];
+        text.appendChild(h);
+        if (hosts.length) {
+            const by = document.createElement('p');
+            by.className = 'spotlight-hosts';
+            by.append('w/ ');
+            hosts.forEach((r, i) => {
+                if (i) by.append(i === hosts.length - 1 ? ' & ' : ', ');
+                const a = document.createElement('a');
+                a.href = `/resident?r=${encodeURIComponent(r.slug)}`;
+                a.textContent = r.name;
+                by.appendChild(a);
+            });
+            text.appendChild(by);
+        }
+        const tags = (show.tags || []).map((t) => String(t.name || '').toLowerCase()).filter(Boolean).slice(0, 3);
+        if (tags.length) {
+            const g = document.createElement('p');
+            g.className = 'spotlight-genres';
+            g.textContent = tags.join(', ');
+            text.appendChild(g);
+        }
+        if (date) {
+            const d = document.createElement('p');
+            d.className = 'show-date';
+            d.textContent = date;
+            text.appendChild(d);
+        }
+        const listen = document.createElement('button');
+        listen.type = 'button';
+        listen.className = 'spotlight-listen';
+        listen.textContent = 'listen';
+        listen.addEventListener('click', () => playArchived(show));
+        text.appendChild(listen);
+
+        box.append(play, text);
+        initLinks(box);
     }
 
     // ---- residents page ----

@@ -387,6 +387,57 @@ html[data-playing] .bokeh .b5 { animation-duration: 23s; animation-direction: al
 .up-next-dj { color: var(--moss-soft); font-weight: 400; }
 .up-next-item.is-live .up-next-when { color: var(--mantis-deep); }
 
+/* ---------- home: spotlight ---------- */
+
+.spotlight { margin-top: var(--s7); max-width: 40rem; }
+.spotlight-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--s4);
+    padding-bottom: var(--s3);
+    margin-bottom: var(--s5);
+    border-bottom: 1px solid var(--rule);
+}
+.spotlight-head .section-title { font-size: var(--fs-h3); }
+.spotlight-shuffle[hidden] { display: none; }
+.spotlight-card {
+    display: grid;
+    grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+    gap: var(--s5);
+    align-items: end;
+}
+.spotlight-art { margin-bottom: 0; }
+.spotlight-text > * + * { margin-top: var(--s2); }
+.spotlight-title {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: var(--fs-h2);
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+}
+.spotlight-hosts { font-weight: 600; color: var(--moss-soft); }
+.spotlight-hosts a { color: var(--mantis-deep); }
+.spotlight-genres { font-size: var(--fs-small); font-weight: 600; }
+.spotlight-listen {
+    margin-top: var(--s4) !important;
+    border: 0;
+    border-radius: 999px;
+    background: var(--mantis);
+    color: #fff;
+    padding: 9px 22px;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.0625rem;
+    cursor: pointer;
+}
+.spotlight-listen:hover { background: var(--mantis-deep); }
+
+/* Spotlight as the whole right-hand side (no intro sentence) */
+.hero--spotlight-only .spotlight { margin-top: 0; max-width: none; }
+.hero--spotlight-only .spotlight-card { grid-template-columns: minmax(0, 1fr); }
+.hero--spotlight-only .spotlight-art { max-width: 26rem; }
+
 .up-next-date {
     padding: var(--s3) 0;
     border-top: 1px solid var(--rule);
@@ -910,6 +961,8 @@ html[data-dock] body { padding-bottom: 124px; }
     .hero-logo img { max-width: 300px; margin: 0 auto; }
     .hero-lede { max-width: none; }
     .up-next-item { grid-template-columns: 1fr; gap: 2px; }
+    .spotlight-card { grid-template-columns: minmax(0, 9rem) minmax(0, 1fr); gap: var(--s4); align-items: start; }
+    .spotlight-title { font-size: 1.375rem; }
 
     .shows-grid,
     .shows-grid--latest { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s6) var(--s4); }

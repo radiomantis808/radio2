@@ -17,7 +17,7 @@
     <style>
         html, body { background-color: #c8e476; }
     </style>
-    <link rel="stylesheet" href="css/style.css?v=2026101906">
+    <link rel="stylesheet" href="css/style.css?v=2026101907">
     <link rel="icon" type="image/png" sizes="32x32" href="css/pictures/favicon-32.png">
     <link rel="apple-touch-icon" href="css/pictures/app-icon.png">
     <link rel="manifest" href="/manifest.json">
@@ -63,12 +63,14 @@
                 </div>
                 <div class="hero-text">
                     <h1 class="hero-lede">community radio from Turin, with resident selectors from São Paulo to Bangalore.</h1>
-                    <section class="up-next" aria-labelledby="up-next-title">
-                        <h2 id="up-next-title" class="section-title">up next</h2>
-                        <ol id="up-next-list" class="up-next-list">
-                            <li class="up-next-empty">loading the schedule…</li>
-                        </ol>
-                        <p id="tz-note" class="up-next-note">Times are in your timezone.</p>
+                    <section class="spotlight" aria-labelledby="spotlight-title">
+                        <div class="spotlight-head">
+                            <h2 id="spotlight-title" class="section-title">spotlight</h2>
+                            <button id="spotlight-shuffle" class="nav-btn spotlight-shuffle" type="button">another one</button>
+                        </div>
+                        <div id="spotlight" class="spotlight-card" aria-live="polite">
+                            <p class="past-shows-loading">picking a transmission…</p>
+                        </div>
                     </section>
                 </div>
             </section>
@@ -123,6 +125,6 @@
     </div>
 
     <audio id="radio-stream" src="https://radiomantis.com/listen/radiomantis/radio.mp3" preload="none"></audio>
-    <script src="javascript/script.js?v=2026101906"></script>
+    <script src="javascript/script.js?v=2026101907"></script>
 </body>
 </html>
