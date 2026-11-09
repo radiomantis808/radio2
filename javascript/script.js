@@ -266,6 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const days = Math.round((that - today) / 86400000);
         if (days === 0) return `today ${time}`;
         if (days === 1) return `tomorrow ${time}`;
+        if (days === -1) return `yesterday ${time}`;
         return `${date.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()} ${time}`;
     }
 
@@ -310,14 +311,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (document.getElementById('up-next-list')) renderUpNext();
     }
 
-    // Every scheduled slot from yesterday to a week ahead, as real moments in time,
-    // sorted. Sheet times are Copenhagen wall-clock (see cphWallToDate).
-    // `days`: how far ahead to look (dated rows can be weeks away)
-    function getUpcomingShows(limit = 3, days = 7) {
+    // Every scheduled slot between two day offsets (from today in Copenhagen), as real
+    // moments in time, sorted. Sheet times are Copenhagen wall-clock (see cphWallToDate).
+    function getOccurrences(fromOffset, toOffset) {
         const now = new Date();
         const cph = getNowInCopenhagen();
         const occurrences = [];
-        for (let offset = -1; offset <= days; offset++) {
+        for (let offset = fromOffset; offset <= toOffset; offset++) {
             const day = new Date(cph.getFullYear(), cph.getMonth(), cph.getDate() + offset);
             const y = day.getFullYear(), m = day.getMonth(), d = day.getDate();
             const dayName = day.toLocaleDateString('en-US', { weekday: 'long' });
@@ -332,45 +332,64 @@ document.addEventListener('DOMContentLoaded', () => {
                 // An end at or before the start (23:00–01:00, 22:00–00:00) is the next morning
                 const endsNextDay = eh * 60 + em <= sh * 60 + sm;
                 const end = cphWallToDate(y, m, d + (endsNextDay ? 1 : 0), eh, em);
-                if (end > now) occurrences.push({ show, start, end, live: start <= now });
+                occurrences.push({ show, start, end, live: start <= now && end > now, past: end <= now });
             });
         }
         occurrences.sort((a, b) => a.start - b.start);
-        return occurrences.slice(0, limit);
+        return occurrences;
     }
 
-    // Home: the next five shows (this is the whole schedule now)
+    // Shows that haven't finished yet, from yesterday up to `days` ahead
+    function getUpcomingShows(limit = 3, days = 7) {
+        const now = new Date();
+        return getOccurrences(-1, days).filter((o) => o.end > now).slice(0, limit);
+    }
+
+    // Every show this week, Monday to Sunday in the listener's timezone, finished ones included
+    function getThisWeekShows() {
+        const monday = new Date();
+        monday.setHours(0, 0, 0, 0);
+        monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+        const nextMonday = new Date(monday);
+        nextMonday.setDate(monday.getDate() + 7);
+        return getOccurrences(-8, 8).filter((o) => o.start >= monday && o.start < nextMonday);
+    }
+
+    // Home: in a week with a show, that whole week's schedule.
+    // Otherwise (or once this week's last show has ended), the date of the next live.
     function renderUpNext() {
         const list = document.getElementById('up-next-list');
         if (!list) return;
         list.textContent = '';
-        const upcoming = getUpcomingShows(5, 120);   // look up to four months ahead
-        if (!upcoming.length) {
-            const li = document.createElement('li');
-            li.className = 'up-next-empty';
-            li.textContent = scheduleError
-                ? "Couldn't load the schedule. Try again in a minute."
-                : 'Nothing scheduled this week yet. Follow us on Instagram for new shows.';
-            list.appendChild(li);
-            return;
-        }
-        // Not a broadcast day: just say when the next one is
         const title = document.getElementById('up-next-title');
         const tzNote = document.getElementById('tz-note');
-        const liveDay = upcoming.some(({ start, live }) => live || isToday(start));
-        if (title) title.hidden = !liveDay;   // the sentence below says it all
-        if (tzNote) tzNote.hidden = !liveDay;
-        if (!liveDay) {
+        const week = getThisWeekShows();
+        const liveWeek = week.some((o) => !o.past);
+        if (title) {
+            title.hidden = !liveWeek;   // the "next live" sentence says it all
+            title.textContent = 'this week';
+        }
+        if (tzNote) tzNote.hidden = !liveWeek;
+
+        if (!liveWeek) {
+            const next = getUpcomingShows(1, 120)[0];   // look up to four months ahead
             const li = document.createElement('li');
-            li.className = 'up-next-date';
-            li.textContent = `next live on ${longDate(upcoming[0].start)}`;
+            if (next) {
+                li.className = 'up-next-date';
+                li.textContent = `next live on ${longDate(next.start)}`;
+            } else {
+                li.className = 'up-next-empty';
+                li.textContent = scheduleError
+                    ? "Couldn't load the schedule. Try again in a minute."
+                    : 'No shows scheduled yet. Follow us on Instagram for new dates.';
+            }
             list.appendChild(li);
             return;
         }
 
-        upcoming.forEach(({ show, start, live }) => {
+        week.forEach(({ show, start, live, past }) => {
             const li = document.createElement('li');
-            li.className = 'up-next-item' + (live ? ' is-live' : '');
+            li.className = 'up-next-item' + (live ? ' is-live' : '') + (past ? ' is-past' : '');
             const when = document.createElement('span');
             when.className = 'up-next-when';
             when.textContent = live ? 'now' : formatWhen(start);

@@ -398,6 +398,7 @@ html[data-playing] .bokeh .b5 { animation-duration: 23s; animation-direction: al
 .up-next-what { font-weight: 600; }
 .up-next-dj { color: var(--moss-soft); font-weight: 400; }
 .up-next-item.is-live .up-next-when { color: var(--mantis-deep); }
+.up-next-item.is-past { opacity: .5; }   /* already happened this week */
 
 .up-next-date {
     padding: var(--s3) 0;
