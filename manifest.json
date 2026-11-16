@@ -1,10 +1,10 @@
 {
-  "name": "Radiomantis",
-  "short_name": "Radiomantis",
+  "name": "Radio Brodo",
+  "short_name": "Radio Brodo",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#c8e476",
-  "theme_color": "#c8e476",
+  "background_color": "#17422f",
+  "theme_color": "#0f2e21",
   "icons": [
     {
       "src": "css/pictures/app-icon-192.png",

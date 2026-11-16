@@ -1,6 +1,6 @@
-# Radiomantis
+# Radio Brodo
 
-The website for [Radiomantis](https://radiomantis.com),  an online community radio.
+The website for Radio Brodo (formerly Radiomantis, at [radiomantis.com](https://radiomantis.com)), an online community radio. The look follows the Radio Brodo identity: golden alphabet pasta (the Brodino 2 fonts in `css/fonts/`) in a deep green pot.
 ## How it works
 
 A small static site (plain HTML/CSS/vanilla JS) plus a tiny Node chat
@@ -16,7 +16,7 @@ backend. The pages are served straight from disk, the streaming/broadcast side l
 Navigation is a lightweight SPA: clicking a nav link swaps the `#app-frame` element via
 `history.pushState` instead of a full reload, so the audio player (and the chat drawer) keep
 playing across pages. Anything that must survive navigation — the `<audio>` element, the
-background plant, and the chat drawer — lives *outside* `#app-frame`.
+Mixcloud dock, and the chat drawer — lives *outside* `#app-frame`.
 
 ## Repo structure
 

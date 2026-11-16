@@ -16,6 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let schedulePromise = null;
     let scheduleError = false;
     let chatInitialized = false;
+    // What the on-air bar shows right now; the home page's bowl follows it
+    let stripNow = { state: 'offline', label: 'off air', bowl: { letters: 'BRODO', title: 'the broth is resting', meta: '' } };
 
     // Past shows (Mixcloud) and residents (the sheet's Residents tab), see section 7
     const MIXCLOUD_URL = 'https://api.mixcloud.com/radiomantis/cloudcasts/?limit=100';
@@ -40,6 +42,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let residentsPromise = null;
     let pastShowsShown = 0;        // how many cards the past-shows page is showing
 
+    let dockKey = null;           // the Mixcloud key of the show in the dock
+    let archiveFilter = { slug: '', q: '' };   // the archive page's resident filter and search
     let widget = null;            // Mixcloud widget API object, when available
     let widgetApiPromise = null;
     // Past shows are cached for the whole visit, so going back to the page doesn't refetch.
@@ -76,9 +80,11 @@ document.addEventListener('DOMContentLoaded', () => {
         initLinks(document.getElementById('app-frame'));
         setCurrentNav();
         setTimezoneNote();
+        renderBowl();
         loadGlobalSchedule();
         loadPastShows();
         loadLatestShows();
+        loadHomeResidents();
         loadResidentsGrid();
         loadResidentPage();
     }
@@ -120,48 +126,53 @@ document.addEventListener('DOMContentLoaded', () => {
     // 3. RADIO PLAYER FUNCTIONS
     // ==========================================
 
+    // Every control marked data-live-toggle plays or pauses the live stream: the bar's
+    // button, the bowl on the home page and its "listen live" button. One listener on the
+    // document covers them, including the ones that come and go with page changes.
     function initAudioPlayer() {
-        const playButton = document.getElementById('play-pause-btn');
         const audioStream = document.getElementById('radio-stream');
-        if (!playButton || !audioStream) return;
+        if (!audioStream) return;
 
         // Remember the stream URL across SPA navigations, since pausing removes the src attribute
         if (audioStream.src) audioStream.dataset.stream = audioStream.src;
-        const streamUrl = audioStream.dataset.stream;
 
         syncPlayButton();
-        
-        playButton.addEventListener('click', () => {
-            if (audioStream.paused) {
-                pauseArchived(); // one thing at a time
-                // 1. Re-attach the stream URL right BEFORE playing to guarantee the live edge
-                audioStream.src = streamUrl;
-                audioStream.load(); 
-                audioStream.play()
-                    .catch((err) => console.error("Couldn't start the stream:", err))
-                    .finally(syncPlayButton);
-            } else {
-                // 2. Pause the stream
-                audioStream.pause();
-                
-                // 3. Completely wipe the source so the browser stops downloading dead data
-                audioStream.removeAttribute('src'); 
-                audioStream.load(); 
-            }
-            syncPlayButton();
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('[data-live-toggle]')) toggleLive();
         });
     }
 
-    // Keep the button's look and its screen-reader label in step with the audio
-    function syncPlayButton() {
-        const playButton = document.getElementById('play-pause-btn');
+    function toggleLive() {
         const audioStream = document.getElementById('radio-stream');
-        if (!playButton || !audioStream) return;
+        if (!audioStream) return;
+        if (audioStream.paused) {
+            pauseArchived(); // one thing at a time
+            // Re-attach the stream URL right BEFORE playing to guarantee the live edge
+            audioStream.src = audioStream.dataset.stream;
+            audioStream.load();
+            audioStream.play()
+                .catch((err) => console.error("Couldn't start the stream:", err))
+                .finally(syncPlayButton);
+        } else {
+            audioStream.pause();
+            // Wipe the source so the browser stops downloading dead data
+            audioStream.removeAttribute('src');
+            audioStream.load();
+        }
+        syncPlayButton();
+    }
+
+    // Keep every play control's look and screen-reader label in step with the audio
+    function syncPlayButton() {
+        const audioStream = document.getElementById('radio-stream');
+        if (!audioStream) return;
         const playing = !audioStream.paused;
-        playButton.classList.toggle('is-playing', playing);
-        // Lets the page react while the stream plays (the background colours drift)
+        document.querySelectorAll('[data-live-toggle]').forEach((button) => {
+            button.classList.toggle('is-playing', playing);
+            if (button.classList.contains('btn')) button.textContent = playing ? 'pause' : 'listen live';
+            else button.setAttribute('aria-label', playing ? 'Pause' : 'Play');
+        });
         document.documentElement.toggleAttribute('data-playing', playing);
-        playButton.setAttribute('aria-label', playing ? 'Pause' : 'Play');
     }
 
     // The top bar follows one rule:
@@ -193,13 +204,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (azuracastLive || today.length) {
             let text;
-            if (current) text = showLabel(current.show);
-            else if (azuracastLive && azuracastLive.name) text = azuracastLive.name;
-            else {
+            let bowl;
+            if (current) {
+                text = showLabel(current.show);
+                bowl = {
+                    letters: current.show.Show || current.show.DJ || '',
+                    title: current.show.Show || current.show.DJ || '',
+                    meta: `${current.show.Show && current.show.DJ ? `w/ ${current.show.DJ} · ` : ''}${timeOf(current.start)} – ${timeOf(current.end)}`,
+                };
+            } else if (azuracastLive && azuracastLive.name) {
+                text = azuracastLive.name;
+                bowl = { letters: azuracastLive.name, title: azuracastLive.name, meta: 'live now' };
+            } else {
                 const next = today.find((o) => !o.live);
                 text = next ? `next live: ${showLabel(next.show)}, ${timeOf(next.start)}` : '';
+                bowl = { letters: 'BRODO', title: 'warming up', meta: next ? `next: ${showLabel(next.show)}, ${timeOf(next.start)}` : '' };
             }
-            setStripState('live', 'on air', text.toLowerCase());
+            setStripState('live', 'on air', text.toLowerCase(), bowl);
             setMediaSession(current ? current.show : null, azuracastLive && azuracastLive.name);
             return;
         }
@@ -208,16 +229,80 @@ document.addEventListener('DOMContentLoaded', () => {
         // schedule (so a slow or failed sheet never cuts anyone off).
         if (scheduleFetchedAt) stopLive();
         const text = upcoming.length ? `next live on ${longDate(upcoming[0].start)}` : '';
-        setStripState('offline', 'off air', text);
+        setStripState('offline', 'off air', text, { letters: 'BRODO', title: 'the broth is resting', meta: text });
+    }
+
+    // ---- the bowl on the home page ----
+    // The show's name floats in the broth as alphabet pasta. Off air it spells BRODO and
+    // stays still; while live the letters drift and bubbles rise.
+    function renderBowl() {
+        const bowl = document.getElementById('bowl');
+        if (!bowl) return;
+        const live = stripNow.state === 'live';
+        const info = stripNow.bowl || {};
+        bowl.classList.toggle('is-live', live);
+
+        const status = document.getElementById('bowl-status');
+        const statusLabel = document.getElementById('bowl-status-label');
+        if (status && statusLabel) {
+            status.className = 'pill ' + (live ? 'pill--live' : 'pill--off');
+            statusLabel.textContent = live ? 'on air' : 'off air';
+        }
+        const title = document.getElementById('bowl-show');
+        if (title) title.textContent = (info.title || '').toLowerCase();
+        const meta = document.getElementById('bowl-meta');
+        if (meta) meta.textContent = info.meta || '';
+        ['bowl-play', 'hero-listen'].forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) el.hidden = !live;
+        });
+
+        const broth = document.getElementById('bowl-broth');
+        const letters = String(info.letters || 'BRODO').normalize('NFD').replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 16) || 'BRODO';
+        if (broth && broth.dataset.letters !== letters + live) {
+            broth.dataset.letters = letters + live;
+            broth.textContent = '';
+            // Scatter the letters on a spiral round the play button, each tilted a little.
+            // A fixed seed, so the same show always lands the same way.
+            let seed = 11;
+            const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+            const fewer = letters.length <= 6;   // short words sit a bit closer in and bigger
+            [...letters].forEach((ch, i) => {
+                const angle = i * 2.39996 + 0.6;
+                const radius = (fewer ? 0.21 : 0.205) + (i % 3) * 0.05 + rnd() * 0.025;
+                const s = document.createElement('span');
+                s.className = 'letter';
+                s.textContent = ch;
+                s.style.left = `${50 + Math.cos(angle) * radius * 100 / 0.82}%`;
+                s.style.top = `${50 + Math.sin(angle) * radius * 100 / 0.82}%`;
+                s.style.fontSize = `${(((fewer ? 0.088 : 0.072) + rnd() * 0.026) * 100).toFixed(2)}cqw`;   // a share of the bowl's width
+                s.style.setProperty('--r', `${Math.round(rnd() * 70 - 35)}deg`);
+                s.style.animationDelay = `${(-rnd() * 7).toFixed(2)}s`;
+                broth.appendChild(s);
+            });
+            if (live) {
+                for (let j = 0; j < 6; j++) {
+                    const b = document.createElement('span');
+                    const d = 4 + Math.round(rnd() * 6);
+                    b.className = 'bubble';
+                    b.style.width = b.style.height = `${d}px`;
+                    b.style.left = `${18 + rnd() * 64}%`;
+                    b.style.top = `${40 + rnd() * 45}%`;
+                    b.style.animationDelay = `${(-rnd() * 3.2).toFixed(2)}s`;
+                    broth.appendChild(b);
+                }
+            }
+        }
+        syncPlayButton();
     }
 
     // Lock-screen / headphone controls info
     function setMediaSession(show, streamer) {
         if (!('mediaSession' in navigator)) return;
-        const host = (show && show.DJ) || streamer || 'Radiomantis';
+        const host = (show && show.DJ) || streamer || 'Radio Brodo';
         navigator.mediaSession.metadata = new MediaMetadata({
-            title: (show && (show.Show || show.DJ)) || streamer || 'Radiomantis',
-            artist: show && show.Show ? host : 'Radiomantis',
+            title: (show && (show.Show || show.DJ)) || streamer || 'Radio Brodo',
+            artist: show && show.Show ? host : 'Radio Brodo',
             artwork: [{ src: '/css/pictures/maskable-icon.png', sizes: '512x512', type: 'image/png' }],
         });
     }
@@ -238,7 +323,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // The strip's colour and dot follow the state: live or offline
-    function setStripState(state, label, text) {
+    function setStripState(state, label, text, bowl) {
+        stripNow = { state, label, bowl };
+        renderBowl();
         const strip = document.getElementById('onair');
         const playButton = document.getElementById('play-pause-btn');
         const statusLabel = document.getElementById('status-label');
@@ -267,7 +354,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (days === 0) return `today ${time}`;
         if (days === 1) return `tomorrow ${time}`;
         if (days === -1) return `yesterday ${time}`;
-        return `${date.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()} ${time}`;
+        if (days > 1 && days < 7) return `${date.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()} ${time}`;
+        // further away: "sun 6 dec 18:00", so it can't be mistaken for this week
+        const month = date.toLocaleDateString('en-US', { month: 'short' }).toLowerCase();
+        return `${shortDay(date)} ${month} ${time}`;
     }
 
     // ==========================================
@@ -355,56 +445,91 @@ document.addEventListener('DOMContentLoaded', () => {
         return getOccurrences(-8, 8).filter((o) => o.start >= monday && o.start < nextMonday);
     }
 
-    // Home: in a week with a show, that whole week's schedule.
-    // Otherwise (or once this week's last show has ended), the date of the next live.
+    // Home: "this week's menu". In a week with a show, that whole week, grouped by day,
+    // like a trattoria menu: show, dotted leader, time. Otherwise (or once this week's
+    // last show has ended), "next on the menu" and the date of the next live.
     function renderUpNext() {
         const list = document.getElementById('up-next-list');
         if (!list) return;
         list.textContent = '';
         const title = document.getElementById('up-next-title');
-        const tzNote = document.getElementById('tz-note');
+        const sub = document.getElementById('tz-note');
         const week = getThisWeekShows();
         const liveWeek = week.some((o) => !o.past);
-        if (title) {
-            title.hidden = !liveWeek;   // the "next live" sentence says it all
-            title.textContent = 'this week';
+        if (title) title.textContent = liveWeek ? "this week's menu" : 'next on the menu';
+        const heroLink = document.getElementById('hero-menu-link');
+        if (heroLink) heroLink.textContent = liveWeek ? "this week's menu" : 'next on the menu';
+        if (sub) {
+            sub.hidden = !liveWeek;
+            if (liveWeek) sub.textContent = `${weekRange()} · times in your timezone (${tzAbbr().toLowerCase()})`;
         }
-        if (tzNote) tzNote.hidden = !liveWeek;
 
         if (!liveWeek) {
             const next = getUpcomingShows(1, 120)[0];   // look up to four months ahead
-            const li = document.createElement('li');
+            const p = document.createElement('p');
             if (next) {
-                li.className = 'up-next-date';
-                li.textContent = `next live on ${longDate(next.start)}`;
+                p.className = 'menu-next';
+                p.textContent = longDate(next.start);
             } else {
-                li.className = 'up-next-empty';
-                li.textContent = scheduleError
+                p.className = 'menu-empty';
+                p.textContent = scheduleError
                     ? "Couldn't load the schedule. Try again in a minute."
                     : 'No shows scheduled yet. Follow us on Instagram for new dates.';
             }
-            list.appendChild(li);
+            list.appendChild(p);
             return;
         }
 
+        let lastDay = '';
         week.forEach(({ show, start, live, past }) => {
-            const li = document.createElement('li');
-            li.className = 'up-next-item' + (live ? ' is-live' : '') + (past ? ' is-past' : '');
-            const when = document.createElement('span');
-            when.className = 'up-next-when';
-            when.textContent = live ? 'now' : formatWhen(start);
+            const day = shortDay(start);
+            if (day !== lastDay) {
+                const d = document.createElement('p');
+                d.className = 'menu-day';
+                d.textContent = day;
+                list.appendChild(d);
+                lastDay = day;
+            }
+            const row = document.createElement('div');
+            row.className = 'menu-row' + (live ? ' is-live' : '') + (past ? ' is-past' : '');
             const what = document.createElement('span');
-            what.className = 'up-next-what';
+            what.className = 'menu-what';
             what.textContent = show.Show || show.DJ || '';
             if (show.Show && show.DJ) {
                 const dj = document.createElement('span');
-                dj.className = 'up-next-dj';
+                dj.className = 'menu-dj';
                 dj.textContent = ` w/ ${show.DJ}`;
                 what.appendChild(dj);
             }
-            li.append(when, what);
-            list.appendChild(li);
+            const lead = document.createElement('span');
+            lead.className = 'menu-lead';
+            lead.setAttribute('aria-hidden', 'true');
+            const time = document.createElement('span');
+            time.className = 'menu-time';
+            time.textContent = live ? 'now' : timeOf(start);
+            row.append(what, lead, time);
+            list.appendChild(row);
         });
+    }
+
+    // "wed 18" in the listener's timezone
+    function shortDay(date) {
+        return `${date.toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase()} ${date.getDate()}`;
+    }
+    // "16 – 22 november" (or "30 november – 6 december") for this Monday to Sunday
+    function weekRange() {
+        const monday = new Date();
+        monday.setHours(0, 0, 0, 0);
+        monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        const month = (d) => d.toLocaleDateString('en-US', { month: 'long' }).toLowerCase();
+        return monday.getMonth() === sunday.getMonth()
+            ? `${monday.getDate()} – ${sunday.getDate()} ${month(sunday)}`
+            : `${monday.getDate()} ${month(monday)} – ${sunday.getDate()} ${month(sunday)}`;
+    }
+    function tzAbbr() {
+        return new Date().toLocaleTimeString('en-US', { timeZoneName: 'short' }).split(' ').pop();
     }
 
     // Is this moment on today's date, in the listener's timezone?
@@ -615,6 +740,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const card = document.createElement('article');
         card.className = 'show-item';
+        if (show.key) card.dataset.key = show.key;
+        if (show.key && show.key === dockKey) card.classList.add('is-playing');
 
         const play = document.createElement('button');
         play.type = 'button';
@@ -668,7 +795,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadPastShows() {
         const container = document.getElementById('past-shows-container');
         if (!container) return;
-        if (!archive.length) showMessage(container, 'loading transmissions…');
+        if (!archive.length) showMessage(container, 'loading shows…');
         try {
             await Promise.all([loadArchive(), loadResidents()]);
         } catch (error) {
@@ -679,23 +806,73 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (document.getElementById('past-shows-container') !== container) return;
         container.textContent = '';
-        if (!archive.length) { showMessage(container, 'No past transmissions yet.'); return; }
+        if (!archive.length) { showMessage(container, 'No past shows yet.'); return; }
+        initArchiveTools(container);
+        renderArchive(container);
+    }
+
+    // Search box and one chip per resident (plus "all"). Both narrow the same list.
+    function initArchiveTools(container) {
+        const search = document.getElementById('archive-search');
+        const chips = document.getElementById('archive-filters');
+        if (search) {
+            search.value = archiveFilter.q;
+            search.addEventListener('input', () => {
+                archiveFilter.q = search.value;
+                renderArchive(container);
+            });
+        }
+        if (chips) {
+            chips.textContent = '';
+            const options = [{ slug: '', name: 'all' }, ...residents.filter((r) => archive.some((s) => hostsOf(s.name).includes(r)))];
+            options.forEach((r) => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'chip';
+                b.textContent = r.name;
+                b.setAttribute('aria-pressed', String(archiveFilter.slug === r.slug));
+                b.addEventListener('click', () => {
+                    archiveFilter.slug = r.slug;
+                    chips.querySelectorAll('.chip').forEach((c) => c.setAttribute('aria-pressed', String(c === b)));
+                    renderArchive(container);
+                });
+                chips.appendChild(b);
+            });
+        }
+    }
+
+    function filteredArchive() {
+        const q = normalize(archiveFilter.q);
+        const who = archiveFilter.slug && residents ? residents.find((r) => r.slug === archiveFilter.slug) : null;
+        return archive.filter((show) => {
+            if (who && !hostsOf(show.name).includes(who)) return false;
+            if (q && !normalize(show.name).includes(q)) return false;
+            return true;
+        });
+    }
+
+    function renderArchive(container) {
+        container.textContent = '';
         pastShowsShown = 0;
+        const old = document.getElementById('past-shows-more');
+        if (old) old.remove();
+        if (!filteredArchive().length) { showMessage(container, 'Nothing in the pot matches that. Try another name.'); return; }
         showMorePastShows(container);
     }
 
     function showMorePastShows(container) {
-        archive.slice(pastShowsShown, pastShowsShown + PAST_SHOWS_PAGE)
+        const list = filteredArchive();
+        list.slice(pastShowsShown, pastShowsShown + PAST_SHOWS_PAGE)
             .forEach((show) => container.appendChild(buildShowCard(show)));
-        pastShowsShown = Math.min(archive.length, pastShowsShown + PAST_SHOWS_PAGE);
+        pastShowsShown = Math.min(list.length, pastShowsShown + PAST_SHOWS_PAGE);
         const old = document.getElementById('past-shows-more');
         if (old) old.remove();
-        if (pastShowsShown >= archive.length) return;
+        if (pastShowsShown >= list.length) return;
         const button = document.createElement('button');
         button.id = 'past-shows-more';
         button.type = 'button';
-        button.className = 'nav-btn past-shows-more';
-        button.textContent = 'load more';
+        button.className = 'btn btn--line past-shows-more';
+        button.textContent = 'more from the pot';
         button.addEventListener('click', () => showMorePastShows(container));
         container.after(button);
     }
@@ -723,27 +900,77 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ---- residents page ----
 
+    // A resident's face in a bowl, name and city: used on the home page and the residents page
+    function residentLink(r, className) {
+        const a = document.createElement('a');
+        a.className = className;
+        a.href = `/resident?r=${encodeURIComponent(r.slug)}`;
+        const img = document.createElement('img');
+        img.className = className === 'person' ? 'person-face' : 'resident-face';
+        img.src = r.photo; img.alt = ''; img.loading = 'lazy'; img.width = 1000; img.height = 1334;
+        const text = document.createElement('span');
+        text.className = 'resident-card-text';
+        const n = document.createElement('span'); n.className = 'resident-name'; n.textContent = r.name;
+        const c = document.createElement('span'); c.className = 'resident-place'; c.textContent = r.city;
+        text.append(n, c);
+        a.append(img, text);
+        return a;
+    }
+
+    // Home: six residents, and the counts in "what's in the pot"
+    async function loadHomeResidents() {
+        const grid = document.getElementById('home-residents');
+        if (!grid) return;
+        await loadResidents();
+        if (document.getElementById('home-residents') !== grid) return;
+        grid.textContent = '';
+        residents.slice(0, 6).forEach((r) => grid.appendChild(residentLink(r, 'person')));
+        initLinks(grid);
+
+        const cities = new Set(residents.map((r) => normalize(r.city)).filter(Boolean)).size;
+        const words = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
+        const say = (n) => words[n] || String(n);
+        const setText = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+        setText('fact-residents', String(residents.length));
+        setText('fact-cities', String(cities));
+        const intro = `${say(residents.length)} residents, ${say(cities)} cities, one pot.`;
+        setText('ingredients-intro', intro.charAt(0).toUpperCase() + intro.slice(1));
+    }
+
     async function loadResidentsGrid() {
         const grid = document.getElementById('residents-grid');
         if (!grid) return;
         await loadResidents();
         if (document.getElementById('residents-grid') !== grid) return;
         grid.textContent = '';
-        residents.forEach((r) => {
-            const a = document.createElement('a');
-            a.className = 'resident';
-            a.href = `/resident?r=${encodeURIComponent(r.slug)}`;
-            const img = document.createElement('img');
-            img.src = r.photo; img.alt = ''; img.loading = 'lazy'; img.width = 1000; img.height = 1334;
-            const cap = document.createElement('span');
-            cap.className = 'resident-caption';
-            const n = document.createElement('span'); n.className = 'resident-name'; n.textContent = r.name;
-            const c = document.createElement('span'); c.className = 'resident-place'; c.textContent = r.city;
-            cap.append(n, c);
-            a.append(img, cap);
-            grid.appendChild(a);
+        const cards = residents.map((r) => {
+            const card = residentLink(r, 'resident-card');
+            grid.appendChild(card);
+            return { r, card };
         });
         initLinks(grid);
+
+        // Who's on air now, or on the menu in the next four weeks
+        await loadGlobalSchedule();
+        if (document.getElementById('residents-grid') !== grid) return;
+        const upcoming = getUpcomingShows(200, 28);
+        cards.forEach(({ r, card }) => {
+            const next = upcoming.find((o) => hostsOf(`${o.show.DJ || ''} ${o.show.Show || ''}`).includes(r));
+            if (!next) return;
+            const text = card.querySelector('.resident-card-text');
+            if (next.live) {
+                const pill = document.createElement('span');
+                pill.className = 'pill pill--live';
+                const dot = document.createElement('span'); dot.className = 'pill-dot';
+                pill.append(dot, 'on air now');
+                text.appendChild(pill);
+            } else {
+                const soon = document.createElement('span');
+                soon.className = 'resident-soon';
+                soon.textContent = `${next.show.Show ? next.show.Show + ', ' : ''}${formatWhen(next.start)}`;
+                text.appendChild(soon);
+            }
+        });
     }
 
     // ---- one resident's page: /resident?r=heatsink ----
@@ -759,7 +986,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!r) {
             nameEl.textContent = 'resident not found';
-            document.title = 'Residents - Radiomantis';
+            document.title = 'Residents - Radio Brodo';
             const p = document.createElement('p');
             p.className = 'page-intro';
             p.append("We couldn't find that resident. ");
@@ -772,7 +999,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         nameEl.textContent = r.name;
-        document.title = `${r.name} - Radiomantis`;
+        document.title = `${r.name} - Radio Brodo`;
         const photo = document.getElementById('resident-photo');
         photo.src = r.photo;
         photo.hidden = false;
@@ -786,9 +1013,18 @@ document.addEventListener('DOMContentLoaded', () => {
             info.appendChild(el); return el;
         };
         add('resident-city', r.city);
-        const genresEl = add('resident-genres', ' ');
-        const nextEl = add('resident-next', ' ');
+        const genresEl = document.createElement('div');
+        genresEl.className = 'resident-genres';
+        genresEl.hidden = true;
+        info.appendChild(genresEl);
         add('resident-bio', r.bio);
+        // "next on the menu" card, filled in from the schedule below
+        const nextEl = document.createElement('div');
+        nextEl.className = 'resident-next';
+        nextEl.hidden = true;
+        info.appendChild(nextEl);
+        const showsLabel = document.getElementById('resident-shows-label');
+        if (showsLabel) showsLabel.textContent = `from ${r.name}'s pot`;
         if (r.instagram || r.mixcloud) {
             const ul = document.createElement('ul');
             ul.className = 'resident-links';
@@ -806,14 +1042,25 @@ document.addEventListener('DOMContentLoaded', () => {
         loadGlobalSchedule().then(() => {
             if (!nextEl.isConnected) return;
             const next = getUpcomingShows(200, 120).find((o) => hostsOf(`${o.show.DJ || ''} ${o.show.Show || ''}`).includes(r));
-            nextEl.textContent = next ? (next.live ? 'on air now' : `next on air: ${formatWhen(next.start)}`) : '';
+            nextEl.textContent = '';
             nextEl.hidden = !next;
+            if (!next) return;
+            const label = document.createElement('span');
+            label.className = 'resident-next-label';
+            label.textContent = next.live ? 'on air now' : 'next on the menu';
+            const what = document.createElement('span');
+            what.className = 'resident-next-when';
+            what.textContent = next.show.Show || next.show.DJ || '';
+            const when = document.createElement('span');
+            when.className = 'resident-next-label';
+            when.textContent = next.live ? `until ${timeOf(next.end)}` : formatWhen(next.start);
+            nextEl.append(label, what, when);
         });
 
         // Their transmissions, from Mixcloud
         const list = document.getElementById('resident-shows');
         const count = document.getElementById('resident-count');
-        showMessage(list, 'loading transmissions…');
+        showMessage(list, 'loading shows…');
         try {
             await loadArchive();
         } catch (error) {
@@ -835,7 +1082,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (name) tally.set(name, (tally.get(name) || 0) + 1);
         }));
         const top = [...tally.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([n]) => n);
-        genresEl.textContent = top.join(', ');
+        genresEl.textContent = '';
+        top.forEach((name) => {
+            const chip = document.createElement('span');
+            chip.textContent = name;
+            genresEl.appendChild(chip);
+        });
         genresEl.hidden = !top.length;
     }
 
@@ -867,6 +1119,7 @@ document.addEventListener('DOMContentLoaded', () => {
         pauseLive();
         frame.src = 'https://player-widget.mixcloud.com/widget/iframe/?light=1&hide_cover=1&autoplay=1&feed='
             + encodeURIComponent(show.key);
+        markPlaying(show.key);
         const label = document.getElementById('mc-dock-label');
         if (label) label.textContent = show.name || '';
         dock.hidden = false;
@@ -889,6 +1142,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (dock) dock.hidden = true;
         widget = null;
         document.documentElement.removeAttribute('data-dock');
+        markPlaying(null);
+    }
+
+    // Ring the card of the show in the dock, wherever it appears on the page
+    function markPlaying(key) {
+        dockKey = key;
+        document.querySelectorAll('.show-item').forEach((card) => {
+            card.classList.toggle('is-playing', !!key && card.dataset.key === key);
+        });
     }
 
     function pauseArchived() {

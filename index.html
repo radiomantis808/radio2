@@ -3,40 +3,40 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Radiomantis</title>
-    <meta name="description" content="Radiomantis is an online community radio with live shows from resident DJs and selectors around the world.">
+    <title>Radio Brodo</title>
+    <meta name="description" content="Radio Brodo is an online community radio from Torino, with live shows from resident DJs and selectors around the world.">
     <meta property="og:type" content="website">
-    <meta property="og:site_name" content="Radiomantis">
-    <meta property="og:title" content="Radiomantis">
-    <meta property="og:description" content="Radiomantis is an online community radio with live shows from resident DJs and selectors around the world.">
+    <meta property="og:site_name" content="Radio Brodo">
+    <meta property="og:title" content="Radio Brodo">
+    <meta property="og:description" content="Radio Brodo is an online community radio from Torino, with live shows from resident DJs and selectors around the world.">
     <meta property="og:url" content="https://radiomantis.com/">
     <meta property="og:image" content="https://radiomantis.com/css/pictures/og-image.jpg">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta name="twitter:card" content="summary_large_image">
     <style>
-        html, body { background-color: #c8e476; }
+        html, body { background-color: #17422f; }
     </style>
-    <link rel="stylesheet" href="css/style.css?v=2026110901">
+    <link rel="stylesheet" href="css/style.css?v=2026111601">
     <link rel="icon" type="image/png" sizes="32x32" href="css/pictures/favicon-32.png">
     <link rel="apple-touch-icon" href="css/pictures/app-icon.png">
     <link rel="manifest" href="/manifest.json">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500..900&family=Schibsted+Grotesk:wght@400..700&display=swap" rel="stylesheet">
-    <meta name="theme-color" content="#db1f26">
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="preload" href="css/fonts/Brodino2.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="css/fonts/Brodino2-Color.woff2" as="font" type="font/woff2" crossorigin>
+    <meta name="theme-color" content="#0f2e21">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body>
-    <div class="bokeh" aria-hidden="true"><span class="b1"></span><span class="b2"></span><span class="b3"></span><span class="b4"></span><span class="b5"></span><span class="b6"></span><span class="b7"></span></div>
-    <img id="plant" class="corner-plant" src="css/pictures/plant-background.webp" alt="" aria-hidden="true" width="837" height="370">
     <a class="skip-link" href="#app-frame">skip to content</a>
 
     <!-- On-air strip: lives outside #app-frame so the player keeps going across pages -->
     <div class="onair" id="onair" data-state="offline">
         <div class="onair-inner">
-            <button id="play-pause-btn" class="icon-button" type="button" aria-label="Play" hidden></button>
+            <button id="play-pause-btn" class="icon-button play-disc" type="button" aria-label="Play" data-live-toggle hidden></button>
             <p class="onair-status"><span class="onair-dot" aria-hidden="true"></span><span id="status-label" aria-live="polite">off air</span></p>
             <p id="main-player-text" class="onair-show"></p>
             <button id="chat-toggle" class="onair-chat" type="button" aria-expanded="false" aria-controls="chat-drawer">chat</button>
@@ -50,7 +50,7 @@
                 <li><a href="/" class="nav-link" aria-current="page">home</a></li>
                 <li><a href="/residents" class="nav-link">residents</a></li>
                 <li><a href="/past-shows" class="nav-link">archive</a></li>
-                <li><a href="/about" class="nav-link">about us</a></li>
+                <li><a href="/about" class="nav-link">about</a></li>
                 <li><a href="https://buymeacoffee.com/radiomantis" class="nav-link nav-link--donate" target="_blank" rel="noopener">donate</a></li>
             </ul>
         </nav>
@@ -59,39 +59,86 @@
     <div id="app-frame" tabindex="-1">
         <main id="home-view" class="page page-home" data-page="home">
             <section class="hero">
-                <div class="hero-logo">
-                    <img src="css/pictures/logofinal.avif" alt="Radiomantis logo: a red mantis inside a circle" width="1381" height="1381" fetchpriority="high">
-                </div>
                 <div class="hero-text">
-                    <h1 class="hero-lede">community radio from Turin, with resident selectors from São Paulo to Bangalore.</h1>
-                    <section class="up-next" aria-labelledby="up-next-title">
-                        <h2 id="up-next-title" class="section-title">this week</h2>
-                        <ol id="up-next-list" class="up-next-list">
-                            <li class="up-next-empty">loading the schedule…</li>
-                        </ol>
-                        <p id="tz-note" class="up-next-note">Times are in your timezone.</p>
-                    </section>
+                    <h1 class="wordmark" aria-label="Radio Brodo"><span aria-hidden="true">RADIO<br>BRODO</span></h1>
+                    <p class="hero-tag">everything goes in the pot.</p>
+                    <p class="hero-lede">Community radio from Torino. Residents from São Paulo to Bangalore throw their records into one pot, live every week.</p>
+                    <div class="hero-actions">
+                        <button id="hero-listen" class="btn" type="button" data-live-toggle hidden>listen live</button>
+                        <a class="btn btn--line" id="hero-menu-link" href="#menu">this week's menu</a>
+                    </div>
+                </div>
+                <div class="hero-bowl">
+                    <div class="bowl" id="bowl">
+                        <div class="bowl-broth" id="bowl-broth" aria-hidden="true"></div>
+                        <button id="bowl-play" class="bowl-play play-disc" type="button" aria-label="Play" data-live-toggle hidden></button>
+                    </div>
+                    <div class="bowl-caption">
+                        <p class="pill pill--off" id="bowl-status"><span class="pill-dot" aria-hidden="true"></span><span id="bowl-status-label">off air</span></p>
+                        <p class="bowl-show" id="bowl-show">the broth is resting</p>
+                        <p class="bowl-meta" id="bowl-meta"></p>
+                    </div>
                 </div>
             </section>
 
+            <section class="home-split" id="menu">
+                <div class="menu-card" aria-labelledby="up-next-title">
+                    <h2 id="up-next-title" class="menu-title">this week's menu</h2>
+                    <p id="tz-note" class="menu-sub">Times are in your timezone.</p>
+                    <div id="up-next-list" class="menu-list">
+                        <p class="menu-empty">loading the schedule…</p>
+                    </div>
+                    <p class="menu-foot">served live from torino</p>
+                </div>
+                <div class="pot">
+                    <h2 class="section-title">what's in the pot</h2>
+                    <p class="pot-text">Radio Brodo started in a student dorm in Aarhus in 2025, as Radiomantis, and now cooks in Torino. Our residents bring whatever they're listening to: MPB next to krautrock, ambient next to hip hop, leftfield pop next to house. Nothing is filtered out. That's the broth.</p>
+                    <dl class="pot-facts">
+                        <div><dt id="fact-residents" class="pot-number">9</dt><dd>residents</dd></div>
+                        <div><dt id="fact-cities" class="pot-number">7</dt><dd>cities</dd></div>
+                        <div><dt class="pot-number">4</dt><dd>continents</dd></div>
+                    </dl>
+                    <div class="pot-actions">
+                        <a class="btn btn--line" href="/about">about us</a>
+                        <a class="btn btn--line" href="/about#play">play with us</a>
+                    </div>
+                </div>
+            </section>
+
+            <div class="soup-band" aria-hidden="true"></div>
+
             <section class="latest" aria-labelledby="latest-title">
                 <div class="section-head">
-                    <h2 id="latest-title" class="section-title">latest transmissions</h2>
-                    <a href="/past-shows" class="text-link">full archive</a>
+                    <h2 id="latest-title" class="section-title">fresh from the pot</h2>
+                    <a href="/past-shows" class="btn btn--line">full archive</a>
                 </div>
                 <div id="latest-shows" class="shows-grid shows-grid--latest"></div>
+            </section>
+
+            <section class="ingredients" aria-labelledby="ingredients-title">
+                <div class="section-head">
+                    <h2 id="ingredients-title" class="section-title">the ingredients</h2>
+                    <a href="/residents" class="btn btn--line">all residents</a>
+                </div>
+                <p class="section-intro" id="ingredients-intro">Nine residents, seven cities, one pot.</p>
+                <div id="home-residents" class="people-grid"></div>
             </section>
         </main>
     </div>
 
     <footer class="site-footer">
-        <p class="footer-about">Radiomantis is an online community radio, founded in Aarhus in 2025 and now based in Turin.</p>
-        <ul class="footer-links">
-            <li><a href="https://www.instagram.com/radiomantis808" target="_blank" rel="noopener">Instagram</a></li>
-            <li><a href="https://www.mixcloud.com/radiomantis/" target="_blank" rel="noopener">Mixcloud</a></li>
-            <li><a href="https://buymeacoffee.com/radiomantis" target="_blank" rel="noopener">Donate</a></li>
-            <li><a href="mailto:play@radiomantis.com">play@radiomantis.com</a></li>
-        </ul>
+        <div class="footer-inner">
+            <div class="footer-brand">
+                <p class="footer-wordmark" aria-hidden="true">RADIO BRODO</p>
+                <p class="footer-about">Radio Brodo is an online community radio, founded in Aarhus in 2025 and now cooking in Torino.</p>
+            </div>
+            <ul class="footer-links">
+                <li><a href="https://www.instagram.com/radiomantis808" target="_blank" rel="noopener">Instagram</a></li>
+                <li><a href="https://www.mixcloud.com/radiomantis/" target="_blank" rel="noopener">Mixcloud</a></li>
+                <li><a href="https://buymeacoffee.com/radiomantis" target="_blank" rel="noopener">Donate</a></li>
+                <li><a href="mailto:play@radiomantis.com">play@radiomantis.com</a></li>
+            </ul>
+        </div>
     </footer>
 
     <!-- Live chat -->
@@ -124,6 +171,6 @@
     </div>
 
     <audio id="radio-stream" src="https://radiomantis.com/listen/radiomantis/radio.mp3" preload="none"></audio>
-    <script src="javascript/script.js?v=2026110901"></script>
+    <script src="javascript/script.js?v=2026111601"></script>
 </body>
 </html>

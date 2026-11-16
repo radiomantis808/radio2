@@ -3,40 +3,40 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>About Us - Radiomantis</title>
-    <meta name="description" content="Radiomantis is an online community radio with live shows from resident DJs and selectors around the world.">
+    <title>About - Radio Brodo</title>
+    <meta name="description" content="Radio Brodo is an online community radio from Torino, with live shows from resident DJs and selectors around the world.">
     <meta property="og:type" content="website">
-    <meta property="og:site_name" content="Radiomantis">
-    <meta property="og:title" content="About Us - Radiomantis">
-    <meta property="og:description" content="Radiomantis is an online community radio with live shows from resident DJs and selectors around the world.">
+    <meta property="og:site_name" content="Radio Brodo">
+    <meta property="og:title" content="About - Radio Brodo">
+    <meta property="og:description" content="Radio Brodo is an online community radio from Torino, with live shows from resident DJs and selectors around the world.">
     <meta property="og:url" content="https://radiomantis.com/about">
     <meta property="og:image" content="https://radiomantis.com/css/pictures/og-image.jpg">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta name="twitter:card" content="summary_large_image">
     <style>
-        html, body { background-color: #c8e476; }
+        html, body { background-color: #17422f; }
     </style>
-    <link rel="stylesheet" href="css/style.css?v=2026110901">
+    <link rel="stylesheet" href="css/style.css?v=2026111601">
     <link rel="icon" type="image/png" sizes="32x32" href="css/pictures/favicon-32.png">
     <link rel="apple-touch-icon" href="css/pictures/app-icon.png">
     <link rel="manifest" href="/manifest.json">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500..900&family=Schibsted+Grotesk:wght@400..700&display=swap" rel="stylesheet">
-    <meta name="theme-color" content="#db1f26">
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="preload" href="css/fonts/Brodino2.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="css/fonts/Brodino2-Color.woff2" as="font" type="font/woff2" crossorigin>
+    <meta name="theme-color" content="#0f2e21">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body>
-    <div class="bokeh" aria-hidden="true"><span class="b1"></span><span class="b2"></span><span class="b3"></span><span class="b4"></span><span class="b5"></span><span class="b6"></span><span class="b7"></span></div>
-    <img id="plant" class="corner-plant" src="css/pictures/plant-background.webp" alt="" aria-hidden="true" width="837" height="370">
     <a class="skip-link" href="#app-frame">skip to content</a>
 
     <!-- On-air strip: lives outside #app-frame so the player keeps going across pages -->
     <div class="onair" id="onair" data-state="offline">
         <div class="onair-inner">
-            <button id="play-pause-btn" class="icon-button" type="button" aria-label="Play" hidden></button>
+            <button id="play-pause-btn" class="icon-button play-disc" type="button" aria-label="Play" data-live-toggle hidden></button>
             <p class="onair-status"><span class="onair-dot" aria-hidden="true"></span><span id="status-label" aria-live="polite">off air</span></p>
             <p id="main-player-text" class="onair-show"></p>
             <button id="chat-toggle" class="onair-chat" type="button" aria-expanded="false" aria-controls="chat-drawer">chat</button>
@@ -50,7 +50,7 @@
                 <li><a href="/" class="nav-link">home</a></li>
                 <li><a href="/residents" class="nav-link">residents</a></li>
                 <li><a href="/past-shows" class="nav-link">archive</a></li>
-                <li><a href="/about" class="nav-link" aria-current="page">about us</a></li>
+                <li><a href="/about" class="nav-link" aria-current="page">about</a></li>
                 <li><a href="https://buymeacoffee.com/radiomantis" class="nav-link nav-link--donate" target="_blank" rel="noopener">donate</a></li>
             </ul>
         </nav>
@@ -63,13 +63,13 @@
             </header>
             <div class="about">
                 <blockquote class="about-quote">
-                    <p>Mantises are a family of over 2400 species, distributed worldwide. We may not have wings, but all mantodeans have forelegs that are greatly enlarged and adapted for playing music.</p>
+                    <p>A brodo is what you get when everything goes in the pot. Nothing is wasted, and it tastes of all of it at once.</p>
                 </blockquote>
                 <div class="about-body">
-                    <p>Radio Mantis was founded in 2025 in a cozy student dorm in Aarhus, Denmark, and has since grown to host regular shows from residents based everywhere from Los Angeles, Brooklyn, São Paulo, Hamburg, Bangalore and more.</p>
-                    <p>Radio Mantis is now based in Turin, Italy, but stays faithful to building a global community of enthusiastic DJs and selectors who want to share their own musical vision.</p>
+                    <p>Radio Brodo was founded in 2025, as Radiomantis, in a cozy student dorm in Aarhus, Denmark, and has since grown to host regular shows from residents based everywhere from Los Angeles, Brooklyn, São Paulo, Hamburg, Bangalore and more.</p>
+                    <p>Radio Brodo is now based in Torino, Italy, but stays faithful to building a global community of enthusiastic DJs and selectors who want to share their own musical vision. MPB next to krautrock, ambient next to hip hop: everything goes in the pot.</p>
                 </div>
-                <aside class="about-contact">
+                <aside class="about-contact" id="play">
                     <h2 class="section-title">play with us</h2>
                     <p>We're always looking for fresh talent. If you're a producer, DJ or selector, or just want to say hi, write to us.</p>
                     <a class="contact-email" href="mailto:play@radiomantis.com">play@radiomantis.com</a>
@@ -79,13 +79,18 @@
     </div>
 
     <footer class="site-footer">
-        <p class="footer-about">Radiomantis is an online community radio, founded in Aarhus in 2025 and now based in Turin.</p>
-        <ul class="footer-links">
-            <li><a href="https://www.instagram.com/radiomantis808" target="_blank" rel="noopener">Instagram</a></li>
-            <li><a href="https://www.mixcloud.com/radiomantis/" target="_blank" rel="noopener">Mixcloud</a></li>
-            <li><a href="https://buymeacoffee.com/radiomantis" target="_blank" rel="noopener">Donate</a></li>
-            <li><a href="mailto:play@radiomantis.com">play@radiomantis.com</a></li>
-        </ul>
+        <div class="footer-inner">
+            <div class="footer-brand">
+                <p class="footer-wordmark" aria-hidden="true">RADIO BRODO</p>
+                <p class="footer-about">Radio Brodo is an online community radio, founded in Aarhus in 2025 and now cooking in Torino.</p>
+            </div>
+            <ul class="footer-links">
+                <li><a href="https://www.instagram.com/radiomantis808" target="_blank" rel="noopener">Instagram</a></li>
+                <li><a href="https://www.mixcloud.com/radiomantis/" target="_blank" rel="noopener">Mixcloud</a></li>
+                <li><a href="https://buymeacoffee.com/radiomantis" target="_blank" rel="noopener">Donate</a></li>
+                <li><a href="mailto:play@radiomantis.com">play@radiomantis.com</a></li>
+            </ul>
+        </div>
     </footer>
 
     <!-- Live chat -->
@@ -118,6 +123,6 @@
     </div>
 
     <audio id="radio-stream" src="https://radiomantis.com/listen/radiomantis/radio.mp3" preload="none"></audio>
-    <script src="javascript/script.js?v=2026110901"></script>
+    <script src="javascript/script.js?v=2026111601"></script>
 </body>
 </html>
