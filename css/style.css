@@ -535,7 +535,7 @@ a:hover { color: var(--luce); }
 .soup-band {
     height: 150px;
     margin: 0 calc(50% - 50vw) var(--s8);
-    background: var(--pentola) url("pictures/alphabet-soup.jpg") center / 520px repeat;
+    background: var(--pentola) url("pictures/alphabet-soup.jpg?v=2") center / 520px repeat;
     opacity: .5;
 }
 
